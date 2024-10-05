@@ -223,6 +223,7 @@ int main()
 
     // ---------- MUTEX-BASED TEST ----------
     init_mutex_list(&mutexList);
+    init_rwlock_list(&rwlockList);
 
     int thread_counts[] = {1, 2, 4, 8};
 
@@ -277,7 +278,6 @@ int main()
         // ---------- RWLOCK-BASED TEST ----------
 
         printf("\nRWLock-Based Test: Thread Count %f ", (double)num_threads);
-        init_rwlock_list(&rwlockList);
 
         double rw_times[runs]; // Array to store times for each run
 
