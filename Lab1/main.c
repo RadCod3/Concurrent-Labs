@@ -158,6 +158,7 @@ void calculate_print_stats(double times[], int runs)
     {
         sum += times[i];
     }
+    // printf("SUM: %f", sum);
     double mean = sum / runs;
 
     // Calculate the standard deviation of the times
@@ -171,7 +172,7 @@ void calculate_print_stats(double times[], int runs)
     double required_n_root = (100 * 1.96 * std_dev) / (5 * mean);
     double req_n = required_n_root * required_n_root;
 
-    printf("\nMean time taken for serial operations: %f seconds\n", mean);
+    printf("\nMean time taken for operations: %f seconds\n", mean);
     printf("Standard deviation of time taken: %f seconds\n", std_dev);
     printf("Required iterations (n): %f \n", req_n);
 }
@@ -221,16 +222,14 @@ int main()
 
     calculate_print_stats(serial_times, runs);
 
-    // ---------- MUTEX-BASED TEST ----------
-    init_mutex_list(&mutexList);
-    init_rwlock_list(&rwlockList);
+    // ---------- LOCK-BASED TESTS ----------
 
     int thread_counts[] = {1, 2, 4, 8};
 
     for (int idx = 0; idx < 4; idx++)
     {
         int num_threads = thread_counts[idx];
-        pthread_t threads[num_threads];
+
         int ops_per_thread = m / num_threads;
 
         printf("\nMutex-Based Test: Thread Count %f ", (double)num_threads);
@@ -238,6 +237,7 @@ int main()
 
         for (int run = 0; run < runs; run++)
         {
+            init_mutex_list(&mutexList);
             // Populate the mutex-based list
             for (int i = 0; i < n; i++)
             {
@@ -251,6 +251,7 @@ int main()
             // Start timing for the mutex-based test
             clock_t start_mutex = clock();
 
+            pthread_t threads_mutex[num_threads];
             // Create threads and pass the portion of the operations array to each
             for (int i = 0; i < num_threads; i++)
             {
@@ -258,13 +259,13 @@ int main()
                 int end = (i == num_threads - 1) ? m : (i + 1) * ops_per_thread;
 
                 void *args[3] = {operations, &start, &end};
-                pthread_create(&threads[i], NULL, mutex_thread_operations, args);
+                pthread_create(&threads_mutex[i], NULL, mutex_thread_operations, args);
             }
 
             // Wait for all threads to finish
             for (int i = 0; i < num_threads; i++)
             {
-                pthread_join(threads[i], NULL);
+                pthread_join(threads_mutex[i], NULL);
             }
 
             clock_t end_mutex = clock();
@@ -283,6 +284,7 @@ int main()
 
         for (int run = 0; run < runs; run++)
         {
+            init_rwlock_list(&rwlockList);
             // Populate the read-write lock-based list
             for (int i = 0; i < n; i++)
             {
@@ -293,9 +295,11 @@ int main()
                 }
             }
 
+            // printf("\nPopulated RWList\n");
             // Start timing for the read-write lock-based test
             clock_t start_rwlock = clock();
 
+            pthread_t threads[num_threads];
             // Create threads and pass the portion of the operations array to each
             for (int i = 0; i < num_threads; i++)
             {
@@ -305,7 +309,7 @@ int main()
                 void *args[3] = {operations, &start, &end};
                 pthread_create(&threads[i], NULL, rwlock_thread_operations, args);
             }
-
+            // printf("\nCreated RWList Threads\n");
             // Wait for all threads to finish
             for (int i = 0; i < num_threads; i++)
             {
@@ -314,7 +318,7 @@ int main()
 
             clock_t end_rwlock = clock();
             rw_times[run] = ((double)(end_rwlock - start_rwlock)) / CLOCKS_PER_SEC;
-
+            // printf("Time Taken: %f", rw_times[run]);
             // Free the read-write lock-based linked list
             free_rwlock_list(&rwlockList);
         }
