@@ -5,15 +5,17 @@
 
 #include "linked_list.h"
 #include "mutex_linked_list.h"
+#include "rwlock_linked_list.h"  // Include the read-write lock-based linked list
 
 // Parameters for testing
-int n = 100;          // Number of initial elements to insert
-int m = 1000;         // Total number of random operations
+int n = 1000;         // Number of initial elements to insert
+int m = 10000;        // Total number of random operations
 float mMember = 0.6;  // 60% Member operations
 float mInsert = 0.2;  // 20% Insert operations
 float mDelete = 0.2;  // 20% Delete operations
 
 MutexLinkedList mutexList;
+RWLockLinkedList rwlockList;
 
 // Helper function to shuffle an array of characters (used to shuffle
 // operations)
@@ -53,28 +55,21 @@ void test_serial_linked_list(LinkedList* list, char* operations) {
         int value = rand() % 65536;  // Random value between 0 and 2^16 - 1
 
         if (operations[i] == 'M') {
-            // printf("Serial: Member(%d) -> %s\n", value,
-            //        member(list, value) ? "Found" : "Not Found");
+            member(list, value);
         } else if (operations[i] == 'I') {
             if (!member(list, value)) {
                 insert(list, value);
-                // printf("Serial: Insert(%d) -> Inserted\n", value);
-            } else {
-                // printf("Serial: Insert(%d) -> Already Exists\n", value);
             }
         } else if (operations[i] == 'D') {
             if (member(list, value)) {
                 delete (list, value);
-                // printf("Serial: Delete(%d) -> Deleted\n", value);
-            } else {
-                // printf("Serial: Delete(%d) -> Not Found\n", value);
             }
         }
     }
 }
 
 // Mutex-based linked list operations in each thread
-void* thread_operations(void* arg) {
+void* mutex_thread_operations(void* arg) {
     char* operations = ((char**)arg)[0];
     int start = *((int*)((char**)arg)[1]);
     int end = *((int*)((char**)arg)[2]);
@@ -83,21 +78,39 @@ void* thread_operations(void* arg) {
         int value = rand() % 65536;  // Random value between 0 and 2^16 - 1
 
         if (operations[i] == 'M') {
-            // printf("Thread: Member(%d) -> %s\n", value,
-            //        mutex_member(&mutexList, value) ? "Found" : "Not Found");
+            mutex_member(&mutexList, value);
         } else if (operations[i] == 'I') {
             if (!mutex_member(&mutexList, value)) {
                 mutex_insert(&mutexList, value);
-                // printf("Thread: Insert(%d) -> Inserted\n", value);
-            } else {
-                // printf("Thread: Insert(%d) -> Already Exists\n", value);
             }
         } else if (operations[i] == 'D') {
             if (mutex_member(&mutexList, value)) {
                 mutex_delete(&mutexList, value);
-                // printf("Thread: Delete(%d) -> Deleted\n", value);
-            } else {
-                // printf("Thread: Delete(%d) -> Not Found\n", value);
+            }
+        }
+    }
+
+    return NULL;
+}
+
+// Read-write lock-based linked list operations in each thread
+void* rwlock_thread_operations(void* arg) {
+    char* operations = ((char**)arg)[0];
+    int start = *((int*)((char**)arg)[1]);
+    int end = *((int*)((char**)arg)[2]);
+
+    for (int i = start; i < end; i++) {
+        int value = rand() % 65536;  // Random value between 0 and 2^16 - 1
+
+        if (operations[i] == 'M') {
+            rwlock_member(&rwlockList, value);
+        } else if (operations[i] == 'I') {
+            if (!rwlock_member(&rwlockList, value)) {
+                rwlock_insert(&rwlockList, value);
+            }
+        } else if (operations[i] == 'D') {
+            if (rwlock_member(&rwlockList, value)) {
+                rwlock_delete(&rwlockList, value);
             }
         }
     }
@@ -120,7 +133,8 @@ int main() {
     // Populate the serial list
     for (int i = 0; i < n; i++) {
         int value = rand() % 65536;
-        if (!member(&serialList, value)) {
+        if (!member(&serialList, value)) {  // TODO: If value is in the list
+                                            // dont skip you need to retry
             insert(&serialList, value);
         }
     }
@@ -149,7 +163,6 @@ int main() {
     // Start timing for the mutex-based test
     int num_threads = 4;
     pthread_t threads[num_threads];
-    int thread_ids[num_threads];
     int ops_per_thread = m / num_threads;
 
     clock_t start_mutex = clock();
@@ -160,7 +173,7 @@ int main() {
         int end = (i == num_threads - 1) ? m : (i + 1) * ops_per_thread;
 
         void* args[3] = {operations, &start, &end};
-        pthread_create(&threads[i], NULL, thread_operations, args);
+        pthread_create(&threads[i], NULL, mutex_thread_operations, args);
     }
 
     // Wait for all threads to finish
@@ -174,6 +187,42 @@ int main() {
 
     // Free the mutex-based linked list
     free_mutex_list(&mutexList);
+
+    // ---------- RWLOCK-BASED TEST ----------
+    init_rwlock_list(&rwlockList);
+
+    // Populate the read-write lock-based list
+    for (int i = 0; i < n; i++) {
+        int value = rand() % 65536;
+        if (!rwlock_member(&rwlockList, value)) {
+            rwlock_insert(&rwlockList, value);
+        }
+    }
+
+    // Start timing for the read-write lock-based test
+    clock_t start_rwlock = clock();
+
+    // Create threads and pass the portion of the operations array to each
+    for (int i = 0; i < num_threads; i++) {
+        int start = i * ops_per_thread;
+        int end = (i == num_threads - 1) ? m : (i + 1) * ops_per_thread;
+
+        void* args[3] = {operations, &start, &end};
+        pthread_create(&threads[i], NULL, rwlock_thread_operations, args);
+    }
+
+    // Wait for all threads to finish
+    for (int i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    clock_t end_rwlock = clock();
+    double time_rwlock = ((double)(end_rwlock - start_rwlock)) / CLOCKS_PER_SEC;
+    printf("\nTime taken for read-write lock-based operations: %f seconds\n",
+           time_rwlock);
+
+    // Free the read-write lock-based linked list
+    free_rwlock_list(&rwlockList);
 
     return 0;
 }
