@@ -8,12 +8,12 @@
 #include "rwlock_linked_list.h" // Include the read-write lock-based linked list
 
 // Parameters for testing
-int n = 1000;        // Number of initial elements to insert
-int m = 10000;       // Total number of random operations
-int runs = 200;      // Number of times to run the test
-float mMember = 0.6; // 60% Member operations
-float mInsert = 0.2; // 20% Insert operations
-float mDelete = 0.2; // 20% Delete operations
+int n = 1000;   // Number of initial elements to insert
+int m = 10000;  // Total number of random operations
+int runs = 200; // Number of times to run the test
+float mMember = 0.99;
+float mInsert = 0.005;
+float mDelete = 0.005;
 
 MutexLinkedList mutexList;
 RWLockLinkedList rwlockList;
