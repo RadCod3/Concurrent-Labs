@@ -5,9 +5,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Main {
+
+    /**
+     * Assignment mentions that the mean bus arrival time is 20 minutes and the mean rider arrival time is 30 seconds.
+     * However, as that would make the simulation too slow, I have reduced the mean bus arrival time to 4 seconds and
+     * the mean rider arrival time to 0.1 seconds to speed up the simulation. Change the following values to the
+     * original ones to slow down the simulation.
+     */
     private static final double MEAN_BUS_ARRIVAL_TIME = 4 * 1000; // 4 seconds
     private static final double MEAN_RIDER_ARRIVAL_TIME = 0.1 * 1000; // 0.1 seconds
-    private static final int SIMULATION_TIME = 10 * 1000;      // 60 seconds
+    private static final int SIMULATION_TIME = 60 * 1000;      // 60 seconds
 
     public static void main(String[] args) {
         BusStop busStop = new BusStop();
@@ -22,7 +29,7 @@ public class Main {
                     Thread.sleep((long) getExponentialRandom(MEAN_RIDER_ARRIVAL_TIME));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-//                    System.out.println("Rider generator thread interrupted.");
+                    //System.out.println("Rider generator thread interrupted.");
                 }
             }
         });

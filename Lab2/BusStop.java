@@ -1,16 +1,16 @@
 import java.util.concurrent.Semaphore;
 
 public class BusStop {
-    private int waitingRiders = 0;
     private final Semaphore mutex = new Semaphore(1);                  // Mutex semaphore
     private final Semaphore busSemaphore = new Semaphore(0, true);     // For riders to wait for the bus
     private final Semaphore boardedSemaphore = new Semaphore(0, true); // For bus to wait for riders to board
+    private int waitingRiders = 0;
 
     public void riderArrives() throws InterruptedException {
         // Acquire mutex to update waiting riders count
         mutex.acquire();
         waitingRiders++;
-        System.out.println("Rider arrived. Waiting riders: " + waitingRiders);
+        System.out.print("Rider arrived. Waiting riders: " + waitingRiders + "\r");
         mutex.release();
 
         // Wait until bus signals to board
@@ -25,7 +25,7 @@ public class BusStop {
         // Acquire mutex to get number of waiting riders and prevent new riders from arriving
         mutex.acquire();
         int ridersToBoard = Math.min(waitingRiders, 50);
-        System.out.println("Bus arrived. Riders to board: " + ridersToBoard);
+        System.out.println("\nBus arrived. Riders to board: " + ridersToBoard);
 
         // Release boarding permits to riders
         busSemaphore.release(ridersToBoard);
@@ -38,14 +38,14 @@ public class BusStop {
 
         // Wait for all riders to board
         boardedSemaphore.acquire(ridersToBoard);
-        depart();
+        depart(ridersToBoard);
     }
 
     private void boardBus() {
-        System.out.println("Rider boarded the bus.");
+//        System.out.println("Rider boarded the bus.");
     }
 
-    private void depart() {
-        System.out.println("Bus is departing.");
+    private void depart(int riders) {
+        System.out.println("Bus is departing with " + riders + " riders. Leftover riders: " + waitingRiders + '\n');
     }
 }
