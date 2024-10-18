@@ -10,7 +10,8 @@ public class Rider implements Runnable {
         try {
             busStop.riderArrives();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            System.out.println("Rider thread interrupted.");
         }
     }
 }

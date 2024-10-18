@@ -2,11 +2,10 @@ import java.util.concurrent.Semaphore;
 
 public class BusStop {
     private int waitingRiders = 0;
-    private final Semaphore mutex = new Semaphore(1);
-    private final Semaphore bus = new Semaphore(0);
-    private final Semaphore boarded = new Semaphore(0);
+    private final Semaphore mutex = new Semaphore(1);                  // Mutex semaphore
+    private final Semaphore busSemaphore = new Semaphore(0, true);     // For riders to wait for the bus
+    private final Semaphore boardedSemaphore = new Semaphore(0, true); // For bus to wait for riders to board
 
-    // Rider arrives at the bus stop
     public void riderArrives() throws InterruptedException {
         // Acquire mutex to update waiting riders count
         mutex.acquire();
@@ -15,38 +14,37 @@ public class BusStop {
         mutex.release();
 
         // Wait until bus signals to board
-        bus.acquire();
+        busSemaphore.acquire();
         boardBus();
+
         // Signal to bus that rider has boarded
-        boarded.release();
+        boardedSemaphore.release();
     }
 
-    // Bus arrives at the bus stop
     public void busArrives() throws InterruptedException {
-        // Acquire mutex to get number of waiting riders
+        // Acquire mutex to get number of waiting riders and prevent new riders from arriving
         mutex.acquire();
         int ridersToBoard = Math.min(waitingRiders, 50);
         System.out.println("Bus arrived. Riders to board: " + ridersToBoard);
-        for (int i = 0; i < ridersToBoard; i++) {
-            // Signal riders to board
-            bus.release();
-        }
+
+        // Release boarding permits to riders
+        busSemaphore.release(ridersToBoard);
+
+        // Update waiting riders count
         waitingRiders -= ridersToBoard;
+
+        // Release mutex to allow new riders to arrive
         mutex.release();
 
         // Wait for all riders to board
-        for (int i = 0; i < ridersToBoard; i++) {
-            boarded.acquire();
-        }
+        boardedSemaphore.acquire(ridersToBoard);
         depart();
     }
 
-    // Simulate rider boarding the bus
     private void boardBus() {
         System.out.println("Rider boarded the bus.");
     }
 
-    // Simulate bus departing
     private void depart() {
         System.out.println("Bus is departing.");
     }

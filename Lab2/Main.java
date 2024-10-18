@@ -1,49 +1,73 @@
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Main {
-    private static final double MEAN_BUS_ARRIVAL_TIME = 10000; // 2 seconds
-    private static final double MEAN_RIDER_ARRIVAL_TIME = 500; // 0.5 seconds
-    private static final int SIMULATION_TIME = 300 * 1000;       // 30 seconds
+    private static final double MEAN_BUS_ARRIVAL_TIME = 4 * 1000; // 5 seconds
+    private static final double MEAN_RIDER_ARRIVAL_TIME = 0.1 * 1000; // 0.5 seconds
+    private static final int SIMULATION_TIME = 60 * 1000;      // 30 seconds
 
     public static void main(String[] args) {
         BusStop busStop = new BusStop();
         ExecutorService executor = Executors.newCachedThreadPool();
-
-        // Start simulation
-        long simulationEndTime = System.currentTimeMillis() + SIMULATION_TIME;
+        AtomicBoolean running = new AtomicBoolean(true);
 
         // Thread for generating riders
-        new Thread(() -> {
-            while (System.currentTimeMillis() < simulationEndTime) {
+        Thread riderGenerator = new Thread(() -> {
+            while (running.get()) {
                 executor.execute(new Rider(busStop));
-
-                // Sleep for next rider arrival
                 try {
                     Thread.sleep((long) getExponentialRandom(MEAN_RIDER_ARRIVAL_TIME));
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
+                    System.out.println("Rider generator thread interrupted.");
                 }
             }
-        }).start();
+        });
+        riderGenerator.start();
 
         // Thread for generating buses
-        new Thread(() -> {
-            while (System.currentTimeMillis() < simulationEndTime) {
-                // Sleep for next bus arrival
+        Thread busGenerator = new Thread(() -> {
+            while (running.get()) {
                 try {
                     Thread.sleep((long) getExponentialRandom(MEAN_BUS_ARRIVAL_TIME));
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
+                    System.out.println("Bus generator thread interrupted.");
                 }
-
                 executor.execute(new Bus(busStop));
             }
-        }).start();
+        });
+        busGenerator.start();
+
+        // Wait for simulation to end
+        try {
+            Thread.sleep(SIMULATION_TIME);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Main simulation thread interrupted.");
+        }
+
+        // Signal threads to stop
+        running.set(false);
+        riderGenerator.interrupt();
+        busGenerator.interrupt();
+
+        // Shutdown executor service
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
-    // Function to generate exponential random variables
     private static double getExponentialRandom(double mean) {
-        return -mean * Math.log(1 - Math.random());
+        return -mean * Math.log(1 - ThreadLocalRandom.current().nextDouble());
     }
 }
