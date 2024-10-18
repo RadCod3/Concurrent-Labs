@@ -11,7 +11,7 @@ public class Bus implements Runnable {
             busStop.busArrives();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.println("Bus thread interrupted.");
+//            System.out.println("Bus thread interrupted.");
         }
     }
 }

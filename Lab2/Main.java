@@ -1,13 +1,13 @@
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class Main {
-    private static final double MEAN_BUS_ARRIVAL_TIME = 4 * 1000; // 5 seconds
-    private static final double MEAN_RIDER_ARRIVAL_TIME = 0.1 * 1000; // 0.5 seconds
-    private static final int SIMULATION_TIME = 60 * 1000;      // 30 seconds
+    private static final double MEAN_BUS_ARRIVAL_TIME = 4 * 1000; // 4 seconds
+    private static final double MEAN_RIDER_ARRIVAL_TIME = 0.1 * 1000; // 0.1 seconds
+    private static final int SIMULATION_TIME = 10 * 1000;      // 60 seconds
 
     public static void main(String[] args) {
         BusStop busStop = new BusStop();
@@ -22,7 +22,7 @@ public class Main {
                     Thread.sleep((long) getExponentialRandom(MEAN_RIDER_ARRIVAL_TIME));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    System.out.println("Rider generator thread interrupted.");
+//                    System.out.println("Rider generator thread interrupted.");
                 }
             }
         });
@@ -35,9 +35,12 @@ public class Main {
                     Thread.sleep((long) getExponentialRandom(MEAN_BUS_ARRIVAL_TIME));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    System.out.println("Bus generator thread interrupted.");
+//                    System.out.println("Bus generator thread interrupted.");
                 }
-                executor.execute(new Bus(busStop));
+                try {
+                    executor.execute(new Bus(busStop));
+                } catch (Exception e) {
+                }
             }
         });
         busGenerator.start();
@@ -47,7 +50,7 @@ public class Main {
             Thread.sleep(SIMULATION_TIME);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.println("Main simulation thread interrupted.");
+//            System.out.println("Main simulation thread interrupted.");
         }
 
         // Signal threads to stop
